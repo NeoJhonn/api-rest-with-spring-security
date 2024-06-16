@@ -1,5 +1,6 @@
 package br.com.jhonny_azevedo.spring_security_jwt.security;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -14,12 +15,12 @@ public class JWTObject {
     public JWTObject() {
     }
 
-    // "String ... roles" uma outra forma de passar um Array como parâmetro
-    public JWTObject(String subject, Date issuedAt, Date expiration, String ... roles) {
+
+    public JWTObject(String subject, Date issuedAt, Date expiration, List<String> roles) {
         this.subject = subject;
         this.issuedAt = issuedAt;
         this.expiration = expiration;
-        this.roles = Arrays.asList(roles);
+        this.roles = new ArrayList<>(roles);
     }
 
     public String getSubject() {

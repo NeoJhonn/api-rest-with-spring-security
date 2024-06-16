@@ -223,10 +223,23 @@ algum número de declarações. Os tokens são assinados usando um segredo priva
 - Adicione a dependência do JWT:
 
 ```
+<!-- JWT - JSON Web Token-->
 <dependency>
-     <groupId>io.jsonwebtoken</groupId>
-     <artifactId>jjwt-api</artifactId>
-     <version>0.12.5</version>
+    <groupId>io.jsonwebtoken</groupId>
+    <artifactId>jjwt-api</artifactId>
+    <version>0.11.5</version>
+</dependency>
+<dependency>
+    <groupId>io.jsonwebtoken</groupId>
+    <artifactId>jjwt-impl</artifactId>
+    <version>0.11.5</version>
+    <scope>runtime</scope>
+</dependency>
+<dependency>
+    <groupId>io.jsonwebtoken</groupId>
+    <artifactId>jjwt-jackson</artifactId>
+    <version>0.11.5</version>
+    <scope>runtime</scope>
 </dependency>
 ```
 
@@ -262,9 +275,142 @@ public class JWTObject {
 
 - Crie um SecurityConfig no pacote security, irá conter informações das credenciais para geração do token:
 
+```
+@Configuration
+// Os atributos da classe serão preenchidos com os valores contido 
+// no prefixo "security.config" do arquivo application.properties
+@ConfigurationProperties(prefix = "security.config")
+public class SecurityConfig {
 
+    public static String PREFIX;
+    public static String KEY;
+    public static Long EXPIRATION;
 
+    public SecurityConfig() {
+    }
 
+    public SecurityConfig(String PREFIX, String KEY, Long EXPIRATION) {
+        this.PREFIX = PREFIX;
+        this.KEY = KEY;
+        this.EXPIRATION = EXPIRATION;
+    }
+    
+    // Adicione somente os setters
+}
+```
+
+- No application.properties adicione as propriedades para o token:
+
+```
+security.config.prefix=Bearer
+security.config.key=SECRET_KEY
+security.config.expiration=3600000
+```
+
+- Agora vamos criar a classe JWTCreator, recurso que faz toda a interação entre o Spring Security com o mecanismo do JWT:
+
+```
+public class JWTCreator {
+
+    public static final String HEADER_AUTHORIZATION = "Authorization";
+    public static final String ROLE_AUTHORITIES = "authorities";
+
+    public static String create(String prefix, String key, JWTObject jwtObject) {
+        String  token = Jwts.builder()
+                          .setSubject(jwtObject.getSubject())
+                          .setIssuedAt(jwtObject.getIssuedAt())
+                          .setExpiration(jwtObject.getExpiration())
+                          .claim(ROLE_AUTHORITIES, checkRoles(jwtObject.getRoles()))
+                          .signWith(SignatureAlgorithm.HS512, key)
+                          .compact();
+
+        return prefix + " " + token;
+    }
+
+    public static JWTObject create(String token, String prefix, String key)
+            throws ExpiredJwtException, UnsupportedJwtException, MalformedJwtException, SignatureException {
+        token = token.replace(prefix, "").trim();
+        Claims claims = Jwts.parserBuilder()
+                            .setSigningKey(key)
+                            .build()
+                            .parseClaimsJws(token)
+                            .getBody();
+
+        JWTObject jwtObject = new JWTObject(
+                    claims.getSubject(),
+                    claims.getIssuedAt(),
+                    claims.getExpiration(),
+                    (List) claims.get(ROLE_AUTHORITIES)
+        );
+
+        return jwtObject;
+    }
+
+    private static List<String> checkRoles(List<String> roles) {
+        return roles.stream().map(s -> "ROLE_".concat(s.replace("ROLE_", ""))).collect(Collectors.toList());
+    }
+}
+```
+
+- Agora vamos criar a classe JWTFilter, recurso de filter que responsável por validar a integridade do token que esta sendo recibido em
+todas as requisições:
+
+```
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.UnsupportedJwtException;
+import io.jsonwebtoken.security.SignatureException;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.util.List;
+
+public class JWTFilter extends OncePerRequestFilter {
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
+        // obter o token da request com AUTHORIZATION
+        String token = request.getHeader(JWTCreator.HEADER_AUTHORIZATION);
+
+        // Validar a integridade do token
+        try {
+            if (token != null && !token.isEmpty()) {
+                JWTObject tokenObject = JWTCreator.create(token, SecurityConfig.PREFIX, SecurityConfig.KEY);
+
+                List<SimpleGrantedAuthority> authorities = tokenObject.getRoles().stream().map(role ->
+                                                            new SimpleGrantedAuthority(role)).toList();
+
+                // Criar o objeto de autenticação
+                UsernamePasswordAuthenticationToken userToken =
+                        new UsernamePasswordAuthenticationToken(
+                                tokenObject.getSubject(),
+                                null,
+                                authorities);
+
+                SecurityContextHolder.getContext().setAuthentication(userToken);
+            } else {
+                SecurityContextHolder.clearContext();
+            }
+
+            filterChain.doFilter(request, response);
+
+        } catch (ExpiredJwtException | UnsupportedJwtException | MalformedJwtException | SignatureException |
+                 java.security.SignatureException e) {
+            e.printStackTrace();
+            response.setStatus(HttpStatus.FORBIDDEN.value());
+        }
+    }
+
+}
+```
 
 
 
