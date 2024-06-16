@@ -213,6 +213,12 @@ public class WebSecurityConfig {
     }
 ```
 
+# JWT - JSON Web Token
+
+- E um padrão da internet para a criação de dados com assinatura opcional e/ou criptografia cujo conteúdo contém o JSON que afirma
+algum número de declarações. Os tokens são assinados usando um segredo privado ou uma chave pública/privada.
+
+- Crie um projeto no spring initializr com as seguintes dependências: Spring Web, Spring Security, Spring Data JPA, Postgres.
 
 
 
