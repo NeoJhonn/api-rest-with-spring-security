@@ -17,7 +17,7 @@ public class WelcomeController {
     }
 
     @GetMapping("/users")
-    @PreAuthorize("hasAnyRole('MANAGERS','USERS')")
+    //@PreAuthorize("hasAnyRole('MANAGERS','USERS')")
     public String users() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();
@@ -30,7 +30,7 @@ public class WelcomeController {
     }
 
     @GetMapping("/managers")
-    @PreAuthorize("hasRole('MANAGERS')")
+    //@PreAuthorize("hasRole('MANAGERS')")
     public String managers() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();

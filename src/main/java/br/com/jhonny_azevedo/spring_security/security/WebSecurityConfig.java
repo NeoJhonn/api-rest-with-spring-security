@@ -3,6 +3,7 @@ package br.com.jhonny_azevedo.spring_security.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -28,6 +29,10 @@ public class WebSecurityConfig {
         http
                 .authorizeRequests(authorizeRequests ->
                         authorizeRequests
+                                .requestMatchers("/").permitAll()
+                                .requestMatchers(HttpMethod.POST, "/login").permitAll()// só será permitido método POST em "/login"
+                                .requestMatchers("/users").hasAnyRole("USERS", "MANAGERS")
+                                .requestMatchers("/managers").hasRole("MANAGERS")
                                 .anyRequest().authenticated()
                 )
                 .formLogin(withDefaults());

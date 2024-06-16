@@ -52,7 +52,7 @@ public class WebSecurityConfig {
     @Bean
     public UserDetailsService userDetailsService() {
         // Você pode criar quantos Users vc precisar, aqui criei user e admin
-        UserDetails user = User.withUsername("user")
+        UserDetails user = User.withUsername("user") 
                 .password("{noop}user123") // O "{noop}" é uma estratégia de criptografia
                 .roles("USERS")
                 .build();
@@ -100,6 +100,33 @@ public class WelcomeController {
         return "Authorized manager";
     }
 }
+```
+
+## Configure Adapter
+
+- Elimina a necessidade dos controllers dispor as roles de usuários(@PreAuthorize), você pode configurar as roles e as permições para
+as rotas dentro da sua classe de configuração WebSecurityConfig através do @Bean SecurityFilterChain(método):
+
+```
+Configuration
+@EnableWebSecurity
+@EnableGlobalMethodSecurity(prePostEnabled = true)  // Habilita o suporte a @PreAuthorize
+public class WebSecurityConfig {
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .authorizeRequests(authorizeRequests ->
+                        authorizeRequests
+                                .requestMatchers("/").permitAll() // <------------------------
+                                .requestMatchers(HttpMethod.POST, "/login").permitAll()// só será permitido método POST em "/login" // <------------------------
+                                .requestMatchers("/users").hasAnyRole("USERS", "MANAGERS") // <------------------------
+                                .requestMatchers("/managers").hasRole("MANAGERS") // <------------------------
+                                .anyRequest().authenticated()
+                )
+                .formLogin(withDefaults());
+        return http.build();
+    }
 ```
 
 
