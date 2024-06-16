@@ -220,6 +220,48 @@ algum número de declarações. Os tokens são assinados usando um segredo priva
 
 - Crie um projeto no spring initializr com as seguintes dependências: Spring Web, Spring Security, Spring Data JPA, Postgres.
 
+- Adicione a dependência do JWT:
+
+```
+<dependency>
+     <groupId>io.jsonwebtoken</groupId>
+     <artifactId>jjwt-api</artifactId>
+     <version>0.12.5</version>
+</dependency>
+```
+
+- Crie toda a estrutura do seu projeto(models, controllers, services, etc).
+
+- O JWT use filtros para fazer a autenticação via tokens e é o que vamos fazer a seguir.
+
+- Crie um JWTObject no pacote security:
+
+```
+public class JWTObject {
+
+    private String subject; // nome do usuário
+    private Date issuedAt; // data de criação do token
+    private Date expiration; // data de espiração do token
+    private List<String> roles; // roles do usuário
+
+    public JWTObject() {
+    }
+
+    // "String ... roles" uma outra forma de passar um Array como parâmetro
+    public JWTObject(String subject, Date issuedAt, Date expiration, String ... roles) {
+        this.subject = subject;
+        this.issuedAt = issuedAt;
+        this.expiration = expiration;
+        this.roles = Arrays.asList(roles);
+    }
+    
+    // Adicione os getters e setters	
+}
+
+```
+
+- Crie um SecurityConfig no pacote security, irá conter informações das credenciais para geração do token:
+
 
 
 
