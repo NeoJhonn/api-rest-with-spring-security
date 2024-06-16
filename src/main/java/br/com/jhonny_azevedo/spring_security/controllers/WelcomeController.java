@@ -1,17 +1,32 @@
 package br.com.jhonny_azevedo.spring_security.controllers;
 
+import br.com.jhonny_azevedo.spring_security.models.User;
+import br.com.jhonny_azevedo.spring_security.repositories.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/")
 public class WelcomeController {
 
-    @GetMapping
+    @Autowired
+    private UserRepository userRepository;
+
+    @PostMapping
+    public void addUser(@RequestBody User user) {
+        User existingUser = userRepository.findByUsername(user.getUsername());
+
+        if (existingUser == null) {
+            System.out.println(user);
+            userRepository.save(user);
+        } else {
+            throw new RuntimeException("User already exists");
+        }
+    }
+
+    @GetMapping("/")
     public String welcome() {
         return "Welcome to My Spring Boot Web API";
     }

@@ -129,6 +129,116 @@ public class WebSecurityConfig {
     }
 ```
 
+## Autenticação com Banco de Dados
+
+- UserDetailService: usada para recuperar dados relacionados ao usuário, possui um método loadUserByUsername() que pode ser substituído
+para personalizar o processo de localização do usuário.
+  - Crie uma classe SecurityDatabaseService.java que implemente UserDetailService para retornar um usuário para contexto de segurança
+conforme o seu banco de dados:
+
+```
+@Service
+public class SecurityDatabaseService implements UserDetailsService {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        User userEntity = userRepository.findByUsername(username);
+
+        if (userEntity == null) {
+            throw new UsernameNotFoundException(username);
+        }
+
+        Set<GrantedAuthority> authorities = new HashSet<GrantedAuthority>();
+        userEntity.getRoles().forEach(role -> {
+            authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
+        });
+
+        UserDetails user = new org.springframework.security.core.userdetails.User(
+                userEntity.getUsername(),
+                userEntity.getPassword(),
+                authorities
+        );
+
+        return user;
+    }
+}
+
+----------------------------------------------------------------
+
+// UserRepository
+public interface UserRepository extends JpaRepository<User, UUID> {
+
+    @Query("SELECT u FROM User u JOIN FETCH u.roles WHERE u.username = :username") <---------------------------
+    User findByUsername(@Param("username") String username);
+}
+```
+
+- Adicine o método globalUserDetails() a sua classe WebSecurityConfig e retire o formulário de login(autenticação básica -> httpBasic(withDefaults())):
+
+```
+@Configuration
+@EnableWebSecurity
+@EnableGlobalMethodSecurity(prePostEnabled = true)  // Habilita o suporte a @PreAuthorize
+public class WebSecurityConfig {
+
+    @Autowired
+    private SecurityDatabaseService securityDatabaseService;
+
+    // Quando você anota um método com @Autowired, o Spring injeta automaticamente as dependências necessárias no 
+    // momento em que o método é chamado. Isso é conhecido como injeção por método.
+    @Autowired
+    public void globalUserDetails(AuthenticationManagerBuilder auth) throws Exception {
+        auth.userDetailsService(securityDatabaseService)
+                .passwordEncoder(NoOpPasswordEncoder.getInstance());
+    }
+
+ @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http.csrf(csrf -> csrf.disable()) // desabilita a segurança padrão do Spring Security para usar a nossa
+                .authorizeRequests(authorizeRequests ->
+                        authorizeRequests
+                                .requestMatchers("/").permitAll()
+                                .requestMatchers(HttpMethod.POST, "/login").permitAll()// só será permitido método POST em "/login"
+                                .requestMatchers("/users").hasAnyRole("USERS", "MANAGERS")
+                                .requestMatchers("/managers").hasRole("MANAGERS")
+                                .anyRequest().authenticated()
+                ).httpBasic(withDefaults());<------------------------
+                //.formLogin(withDefaults()); 
+
+
+        return http.build();
+    }
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
