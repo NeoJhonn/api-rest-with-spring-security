@@ -31,7 +31,7 @@ public class JWTFilter extends OncePerRequestFilter {
                 JWTObject tokenObject = JWTCreator.create(token, SecurityConfig.PREFIX, SecurityConfig.KEY);
 
                 List<SimpleGrantedAuthority> authorities = tokenObject.getRoles().stream().map(role ->
-                                                            new SimpleGrantedAuthority(role)).toList();
+                        new SimpleGrantedAuthority(role)).toList();
 
                 // Criar o objeto de autenticação
                 UsernamePasswordAuthenticationToken userToken =

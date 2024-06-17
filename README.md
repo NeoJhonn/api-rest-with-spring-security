@@ -412,8 +412,176 @@ public class JWTFilter extends OncePerRequestFilter {
 }
 ```
 
+- Agora vamos criar a classe WebSecurityConfig:
+
+```
+@Configuration
+@EnableWebSecurity
+@EnableGlobalMethodSecurity(prePostEnabled = true)
+public class WebSecurityConfig {
+
+    private static final String[] SWAGGER_WHITELIST = {
+            "/v2/api-docs",
+            "/swagger-resources",
+            "/swagger-resources/**",
+            "/configuration/ui",
+            "/configuration/security",
+            "/swagger-ui.html",
+            "/webjars/**"
+    };
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http.headers(headers -> headers.frameOptions(withDefaults()).disable()); // desabilita o frameOptions para permitir o Swagger
+        http.cors(cors -> cors.disable()); // desabilita o cors na sua api
+        http.csrf(csrf -> csrf.disable()) // desabilita a segurança padrão do Spring Security para usar a nossa
+                .addFilterAfter(new JWTFilter(), UsernamePasswordAuthenticationFilter.class)
+                .authorizeRequests(authorizeRequests -> {
+
+                            try {
+                                authorizeRequests
+                                        .requestMatchers(SWAGGER_WHITELIST).permitAll()
+                                        .requestMatchers(HttpMethod.POST,"/login").permitAll()// só será permitido método POST em "/login"
+                                        .requestMatchers(HttpMethod.POST, "/users").permitAll()
+                                        .requestMatchers(HttpMethod.GET, "/users").hasAnyRole("USERS", "MANAGERS")
+                                        .requestMatchers("/managers").hasRole("MANAGERS")
+                                        .anyRequest().authenticated()
+                                        .and()
+                                        .sessionManagement(sessionManagement ->
+                                                sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+                );//.httpBasic(withDefaults());
+                //.formLogin(withDefaults());
 
 
+        return http.build();
+    }
+
+    @Bean
+    public BCryptPasswordEncoder encoder() {
+        return new BCryptPasswordEncoder();
+    }
+}
+
+```
+
+- Agora vamos criar as classe LoginDTO e SessionDTO:
+
+```
+// Classe que receberá os dados para a realização do Login na aplicação
+
+public class LoginDTO {
+
+    private String username;
+    private String password;
+
+    public LoginDTO() {
+    }
+
+    public LoginDTO(String username, String password) {
+        this.username = username;
+        this.password = password;
+    }
+
+    // Adicionar getters e setters
+}
+
+
+
+---------------------------------------------
+
+// Classe que representa uma sessão do sistema contendo o token gerado
+
+public class SessionDTO {
+
+    private String login;
+    private String token;
+
+    public SessionDTO() {
+    }
+
+    public SessionDTO(String login, String token) {
+        this.login = login;
+        this.token = token;
+    }
+
+    // Adicionar getters e setters
+}
+```
+
+- Agora vamos criar o Controller LoginController que irar fazer o login na aplicação:
+
+```
+@RestController
+public class LoginController {
+
+    @Autowired
+    private PasswordEncoder encoder;
+
+    @Autowired
+    private SecurityConfig securityConfig;
+
+    @Autowired
+    private UserRepository repository;
+
+    @PostMapping("/login")
+    public SessionDTO login(@RequestBody LoginDTO loginDTO) {
+        User user = repository.findByUsername(loginDTO.getUsername());
+
+        if (user != null) {
+           boolean passwordsMatch = encoder.matches(loginDTO.getPassword(), user.getPassword());
+           if  (!passwordsMatch) {
+               throw new RuntimeException("Senha invalida para o login: "+ loginDTO.getUsername());
+           }
+           // Enviar objeto Session para retornar mais informações do usuário
+            SessionDTO session = new SessionDTO();
+            session.setLogin(user.getUsername());
+
+            // criar um objeto JWTObject
+            JWTObject jwtObject = new JWTObject();
+            jwtObject.setIssuedAt(new Date(System.currentTimeMillis()));
+            jwtObject.setExpiration(new Date(System.currentTimeMillis() + SecurityConfig.EXPIRATION));
+            jwtObject.setRoles(user.getRoles());
+            // Criar o token e settar em session
+            session.setToken(JWTCreator.create(SecurityConfig.PREFIX, SecurityConfig.KEY, jwtObject));
+
+            return session;
+        } else {
+            throw new RuntimeException("Erro ao tentar fazer o login");
+        }
+    }
+}
+```
+
+- Por fim crie um WelcomeController para testar se a autenticação está correta pra acessa os endpoints de acordo com o tipo de usuário:
+
+```
+@RestController
+public class WelcomeController {
+
+    @GetMapping
+    public String welcome() {
+        return "Welcome to Spring Security JWT";
+    }
+
+    @GetMapping("/users")
+    public String welcomeUser() {
+        return "Authorized User or Managers";
+    }
+
+    @GetMapping("/managers")
+    public String welcomeAdmin() {
+        return "Authorized Managers";
+    }
+}
+```
+
+- Para testa o token coloque o token gerado quando fizer login no Insomnia -> Auth Type -> Bearer.
+
+- Arquivo Insomnia para testar os endpoints disponível na pasta documentation.
 
 
 

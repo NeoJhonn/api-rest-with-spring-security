@@ -30,15 +30,16 @@ public class WebSecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.headers(headers -> headers.frameOptions(withDefaults()).disable()); // desabilita o frameOptions para permitir o Swagger
-        http.cors(cors -> cors.disable()); // desabilita o cors na sua api
-        http.csrf(csrf -> csrf.disable()) // desabilita a segurança padrão do Spring Security para usar a nossa
+        http.headers(headers -> headers.frameOptions(withDefaults()).disable()) // desabilita o frameOptions para permitir o Swagger
+        .cors(cors -> cors.disable()) // desabilita o cors na sua api
+        .csrf(csrf -> csrf.disable()) // desabilita a segurança padrão do Spring Security para usar a nossa
                 .addFilterAfter(new JWTFilter(), UsernamePasswordAuthenticationFilter.class)
                 .authorizeRequests(authorizeRequests -> {
 
                             try {
                                 authorizeRequests
                                         .requestMatchers(SWAGGER_WHITELIST).permitAll()
+                                        .requestMatchers("/").permitAll()
                                         .requestMatchers(HttpMethod.POST,"/login").permitAll()// só será permitido método POST em "/login"
                                         .requestMatchers(HttpMethod.POST, "/users").permitAll()
                                         .requestMatchers(HttpMethod.GET, "/users").hasAnyRole("USERS", "MANAGERS")
@@ -52,7 +53,7 @@ public class WebSecurityConfig {
                             }
                         }
                 );//.httpBasic(withDefaults());
-                //.formLogin(withDefaults());
+        //.formLogin(withDefaults());
 
 
         return http.build();

@@ -6,7 +6,6 @@ import io.jsonwebtoken.Jwts;
 
 import java.security.SignatureException;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class JWTCreator {
 
@@ -15,12 +14,12 @@ public class JWTCreator {
 
     public static String create(String prefix, String key, JWTObject jwtObject) {
         String  token = Jwts.builder()
-                          .setSubject(jwtObject.getSubject())
-                          .setIssuedAt(jwtObject.getIssuedAt())
-                          .setExpiration(jwtObject.getExpiration())
-                          .claim(ROLE_AUTHORITIES, checkRoles(jwtObject.getRoles()))
-                          .signWith(SignatureAlgorithm.HS512, key)
-                          .compact();
+                .setSubject(jwtObject.getSubject())
+                .setIssuedAt(jwtObject.getIssuedAt())
+                .setExpiration(jwtObject.getExpiration())
+                .claim(ROLE_AUTHORITIES, checkRoles(jwtObject.getRoles()))
+                .signWith(SignatureAlgorithm.HS256, key)
+                .compact();
 
         return prefix + " " + token;
     }
@@ -29,16 +28,16 @@ public class JWTCreator {
             throws ExpiredJwtException, UnsupportedJwtException, MalformedJwtException, SignatureException {
         token = token.replace(prefix, "").trim();
         Claims claims = Jwts.parserBuilder()
-                            .setSigningKey(key)
-                            .build()
-                            .parseClaimsJws(token)
-                            .getBody();
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
 
         JWTObject jwtObject = new JWTObject(
-                    claims.getSubject(),
-                    claims.getIssuedAt(),
-                    claims.getExpiration(),
-                    (List) claims.get(ROLE_AUTHORITIES)
+                claims.getSubject(),
+                claims.getIssuedAt(),
+                claims.getExpiration(),
+                (List) claims.get(ROLE_AUTHORITIES)
         );
 
         return jwtObject;

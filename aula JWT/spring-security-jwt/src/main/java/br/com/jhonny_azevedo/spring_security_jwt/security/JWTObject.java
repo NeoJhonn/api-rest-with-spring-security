@@ -52,8 +52,8 @@ public class JWTObject {
     }
 
     // "String ... roles" uma outra forma de passar um Array como parâmetro
-    public void setRoles(String ... roles) {
-        this.roles = Arrays.asList(roles);
+    public void setRoles(List<String> roles) {
+        this.roles = roles;
     }
 
     @Override
